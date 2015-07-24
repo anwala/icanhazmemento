@@ -1,0 +1,20 @@
+{
+	"globalPrefix": "[path to application folder]",
+	"spamFilterCoeff": 5,
+	"MEMENTO_AGGREGATOR_TIMEGATE": "http://timetravel.mementoweb.org/timegate/",
+
+	"IA_SAVEWEBPAGE_URI": "http://web.archive.org/save/",
+	"AIS_SAVEWEBPAGE_URI": "https://archive.is/submit/",
+
+	"twitterConsumerKey": "[YourTwitterConsumerKey]",
+	"twitterConsumerSecret": "[YourTwitterConsumerSecret]",
+	"twitterAccessToken": "[YourTwitterAccessToken]",
+	"twitterAccessTokenSecret": "[YourTwitterAccessTokenSecret]",
+
+	"receiversEmail": "yourEmail0, yourEmail1, ..., yourEmailN",
+	"senderEmail": "yourSenderEmail",
+	"mailServer": "yourMailServer",
+
+	"pythonVirtualEnv1Path": "[path to python virtual env]",
+	"pythonSystemPath": "/usr/bin/python"
+}
