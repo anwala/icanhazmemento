@@ -1,6 +1,7 @@
 {
 	"globalPrefix": "[path to application folder]",
 	"spamFilterCoeff": 5,
+	"temporalThresholdInDays": 1,
 	"MEMENTO_AGGREGATOR_TIMEGATE": "http://timetravel.mementoweb.org/timegate/",
 
 	"IA_SAVEWEBPAGE_URI": "http://web.archive.org/save/",

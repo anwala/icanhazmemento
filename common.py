@@ -77,7 +77,7 @@ def getPageTitle(url):
 
 			titleOfPage = soup.title.string
 
-			#this line added because some titles contain "funny" characters that generate encoding errors
+			#this line added because some titles contain funny characters that generate encoding errors
 			titleOfPage = titleOfPage.encode('ascii', 'ignore')
 		except:
 			exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -99,6 +99,62 @@ def updateStatus(statusUpdateString, tweet_id = 0, dotFlag = ''):
 			api.update_status(status=dotFlag + statusUpdateString, in_reply_to_status_id=tweet_id)
 		else:
 			api.update_status(statusUpdateString)
+
+def sendToWebArchive(url):
+
+	url = url.strip()
+	if( len(url) == 0 ):
+		return False
+
+	goodResponseFlagArchive0 = True
+	requestSendToArchive = urllib2.Request(url)
+	try:
+		responseSendToArchive = urllib2.urlopen(requestSendToArchive)
+	except:
+		#genericBadMessage(url, screenName, tweet_id)
+		goodResponseFlagArchive0 = False
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(fname, exc_tb.tb_lineno, sys.exc_info() )
+
+	return goodResponseFlagArchive0
+
+def sendToArchiveIs(AIS_SAVEWEBPAGE_URI, url):
+
+	url = url.strip()
+	AIS_SAVEWEBPAGE_URI = AIS_SAVEWEBPAGE_URI.strip()
+
+	if( len(url) == 0 or len(AIS_SAVEWEBPAGE_URI) == 0 ):
+		return False
+
+	goodResponseFlagArchive1 = True
+	query_args = { 'url': url }
+	encoded_args = urllib.urlencode(query_args)
+
+	try:
+		urllib2.urlopen(AIS_SAVEWEBPAGE_URI, encoded_args).read()
+	except urllib2.HTTPError, e:
+		goodResponseFlagArchive1 = False
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(fname, exc_tb.tb_lineno, sys.exc_info() )
+
+	return goodResponseFlagArchive1
+
+def genericNewlyArchivedPageHandler(url, acceptDatetimeObj, screenName, tweet_id):
+
+	pageTitle = getPageTitle(url)
+	#50: 140 - remaining text
+	if( len(pageTitle) > 20 ):
+		pageTitle = pageTitle[0:17]
+		pageTitle = pageTitle + '...'
+
+	formattedTweetDatetime = acceptDatetimeObj.strftime('%Y%m%d%H%M%S')
+	archiveURI = 'http://timetravel.mementoweb.org/memento/' + formattedTweetDatetime + '/' + url
+	notificationMessage = '@'+ screenName + ', Your newly archived page: ' + archiveURI + ' (' + pageTitle + '). See other versions: http://timetravel.mementoweb.org/list/'+ formattedTweetDatetime +'/' + url
+	
+	print '\tsending message:', notificationMessage
+	updateStatus(statusUpdateString = notificationMessage, tweet_id = tweet_id, dotFlag = '')
 
 def getOrSetArchive(screenName, tweet_id, url, acceptDatetime):
 
@@ -127,35 +183,18 @@ def getOrSetArchive(screenName, tweet_id, url, acceptDatetime):
 			print '\tInside Exception: requestGetFromArchive'
 
 			if e.code == 404:
+
 				print '\tWe got a 404, submitting to the archive.'
-				print '\tSending to: ' + IA_SAVEWEBPAGE_URI + url
+				
 				
 				#send to webarchive.org - start
-				goodResponseFlagArchive0 = True
-				requestSendToArchive = urllib2.Request(IA_SAVEWEBPAGE_URI + url)
-				try:
-					responseSendToArchive = urllib2.urlopen(requestSendToArchive)
-				except:
-					#genericBadMessage(url, screenName, tweet_id)
-					goodResponseFlagArchive0 = False
-					exc_type, exc_obj, exc_tb = sys.exc_info()
-					fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-					print(fname, exc_tb.tb_lineno, sys.exc_info() )
+				print '\tSending to: ' + IA_SAVEWEBPAGE_URI + url
+				goodResponseFlagArchive0 = sendToWebArchive(IA_SAVEWEBPAGE_URI + url)
 				#send to webarchive.org - end
 
 				#send to archive.is - start
 				print '\tSending to: ' + AIS_SAVEWEBPAGE_URI + url
-				goodResponseFlagArchive1 = True
-				query_args = { 'url': url }
-				encoded_args = urllib.urlencode(query_args)
-
-				try:
-					urllib2.urlopen(AIS_SAVEWEBPAGE_URI, encoded_args).read()
-				except urllib2.HTTPError, e:
-					goodResponseFlagArchive1 = False
-					exc_type, exc_obj, exc_tb = sys.exc_info()
-					fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-					print(fname, exc_tb.tb_lineno, sys.exc_info() )
+				goodResponseFlagArchive1 = sendToArchiveIs(AIS_SAVEWEBPAGE_URI, url)
 				#send to archive.is - end
 
 				if( goodResponseFlagArchive0 == False and goodResponseFlagArchive1 == False ):
@@ -163,20 +202,7 @@ def getOrSetArchive(screenName, tweet_id, url, acceptDatetime):
 					return
 				
 				#here means success saving to archive
-				#send notarchiveURI = 'http://web.archive.org' + responseSendToArchive.info().getheader("Content-Location")ification tweet - start
-
-				pageTitle = getPageTitle(url)
-				#50: 140 - remaining text
-				if( len(pageTitle) > 20 ):
-					pageTitle = pageTitle[0:17]
-					pageTitle = pageTitle + '...'
-
-				formattedTweetDatetime = acceptDatetimeObj.strftime('%Y%m%d%H%M%S')
-				archiveURI = 'http://timetravel.mementoweb.org/memento/' + formattedTweetDatetime + '/' + url
-				notificationMessage = '@'+ screenName + ', Your newly archived page: ' + archiveURI + ' (' + pageTitle + '). See other versions: http://timetravel.mementoweb.org/list/'+ formattedTweetDatetime +'/' + url
-				
-				print '\tsending message:', notificationMessage
-				updateStatus(statusUpdateString = notificationMessage, tweet_id = tweet_id, dotFlag = '')
+				genericNewlyArchivedPageHandler(url, acceptDatetimeObj, screenName, tweet_id)
 
 				#send notification tweet - end
 				return
@@ -242,6 +268,39 @@ def getOrSetArchive(screenName, tweet_id, url, acceptDatetime):
 
 		if datePriorToAcceptDatetime is not None:
 			print '\t', datePriorToAcceptDatetime, mementoDatetimeDict[datePriorToAcceptDatetime]
+
+			#check if acceptDatetimeObj MINUS datePriorToAcceptDatetime is within threshold - start
+			threshold = getConfigParameters('temporalThresholdInDays')
+			#datePriorToAcceptDatetimeObj = datetime.strptime(datePriorToAcceptDatetime, '%Y-%m-%d %H:%M:%S')
+			
+			difference = acceptDatetimeObj - datePriorToAcceptDatetime
+
+			print '\tthreshold in days:', threshold
+			print '\tchecking threshold', acceptDatetimeObj, 'MINUS', datePriorToAcceptDatetime, '=', difference.days, 'days'
+
+			if( difference.days > threshold ):
+				print '\tUrl is NOT within threshold, sending for archiving'
+
+				#send to webarchive.org - start
+				print '\tSending to: ' + IA_SAVEWEBPAGE_URI + url
+				goodResponseFlagArchive0 = sendToWebArchive(IA_SAVEWEBPAGE_URI + url)
+				#send to webarchive.org - end
+
+				#send to archive.is - start
+				print '\tSending to: ' + AIS_SAVEWEBPAGE_URI + url
+				goodResponseFlagArchive1 = sendToArchiveIs(AIS_SAVEWEBPAGE_URI, url)
+				#send to archive.is - end
+
+				if( goodResponseFlagArchive0 == False and goodResponseFlagArchive1 == False ):
+					print '\tArchiving error'
+					return
+
+				#here means success saving to archive
+				genericNewlyArchivedPageHandler(url, acceptDatetimeObj, screenName, tweet_id)
+				return
+
+			
+			#check if acceptDatetimeObj MINUS datePriorToAcceptDatetime is within threshold - end
 			
 			#send notification tweet - start
 
@@ -272,35 +331,4 @@ def getOrSetArchive(screenName, tweet_id, url, acceptDatetime):
 
 		errorMessage = fname + ', ' + str(exc_tb.tb_lineno)  + ', ' + str(sys.exc_info())
 		print '\tERROR:', errorMessage
-		sendErrorEmail( str(errorMessage) )
-
-#calls this program to run at a scheduled time
-#commandToSchedule = '/usr/bin/python ' + os.path.realpath(__file__)
-def scheduleNextRun(minutesPlusNow, commandToSchedule):
-
-	commandToSchedule = commandToSchedule.strip()
-	if( minutesPlusNow < 1 or len(commandToSchedule) == 0 ):
-		print 'BAD PARAM(S)'
-		return
-
-	now = datetime.now()
-	nextRunTime = str(now + timedelta(minutes = minutesPlusNow))
-	nextRunTime = nextRunTime.split(' ')[1].split('.')[0].strip()
-	nextRunTime = nextRunTime[:-3]
-	
-	sendEmailFlag = False
-	messageToSend = ''
-
-	try:
-		co = 'echo "' + commandToSchedule + '" | at ' + nextRunTime
-		print co
-		commands.getoutput(co)
-	except:
-		sendEmailFlag = True
-		exc_type, exc_obj, exc_tb = sys.exc_info()
-		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-		messageToSend = fname + '\n' + exc_tb.tb_lineno + '\n' + sys.exc_info()
-		print(fname, exc_tb.tb_lineno, sys.exc_info() )
-
-		errorMessage = (fname, exc_tb.tb_lineno, sys.exc_info() )
 		sendErrorEmail( str(errorMessage) )
