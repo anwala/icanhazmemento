@@ -1,11 +1,11 @@
 import tweepy
 import time
 import os, sys
+import commands
 
 from common import datetime_from_utc_to_local
 from common import getOrSetArchive
 from common import expandUrl
-from common import scheduleNextRun
 
 from getConfig import getConfigParameters
 from sendEmail import sendErrorEmail
@@ -65,6 +65,7 @@ def getRequestUrls():
 		requestsRemaining = api.rate_limit_status()['resources']['search']['/search/tweets']['remaining']
 	except:
 		requestsRemaining = 0
+		#m1-handle exception
 		exc_type, exc_obj, exc_tb = sys.exc_info()
 		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
 		print(fname, exc_tb.tb_lineno, sys.exc_info() )
@@ -89,6 +90,7 @@ def getRequestUrls():
 			#if tweet is present this will change the False to True, else it will remain False and Stop the loop
 			isTweetPresentFlag = False
 			print "current sinceIDValue: ", sinceIDValue
+			#m1-handle exception
 			try:
 				for tweet in tweepy.Cursor(api.search, q="%23icanhazmemento", since_id=sinceIDValue).items(30):
 					print
@@ -106,7 +108,8 @@ def getRequestUrls():
 					if( tweet.id > sinceIDValue ):
 						sinceIDValue = tweet.id
 
-					#print localTweetDatetime, ",tweet_id:", tweet.id, ",", tweet.user.screen_name, " - ", tweet.text
+					#MOD
+					print localTweetDatetime, ",tweet_id:", tweet.id, ",", tweet.user.screen_name, " - ", tweet.text
 
 					#get urls from tweet - start
 					#since even though access to none short url, still meant that
@@ -122,10 +125,12 @@ def getRequestUrls():
 
 					#if this tweet is in response to a parent tweet with link(s) - start
 					if( tweet.in_reply_to_status_id is not None and len(shortTwitterUrls) == 0):
-						print 'checking parent:', tweet.in_reply_to_status_id
+						print 'parent ID:', tweet.in_reply_to_status_id
 
 						parentTweet = api.get_status(tweet.in_reply_to_status_id)
+						print 'parent tweet:', parentTweet.text
 						for shortURL in parentTweet.entities['urls']:
+							#print 'n: ', shortURL['expanded_url']
 							shortTwitterUrls.append(shortURL['url'])
 					#if this tweet is in response to a parent tweet with link(s) - end
 
@@ -143,15 +148,22 @@ def getRequestUrls():
 								#create new entry for user since user is not in dictionary
 								print '...potentialExpandedUrl:', potentialExpandedUrl
 								potentialExpandedUrl = potentialExpandedUrl.strip()
+
+								#note spam filter not implemented since twitter blocks spam
+								twitterUsersDict[tweet.id] = {}
+								twitterUsersDict[tweet.id]['screen_name'] = tweet.user.screen_name
+								twitterUsersDict[tweet.id]['expandedUrl'] = potentialExpandedUrl
+								twitterUsersDict[tweet.id]['create_datetime'] = localTweetDatetime
+						
+								'''
+								#faulty logic
 								if( tweet.user.screen_name in twitterUsersDict):
-									#twitterUsersDict[tweet.user.screen_name].append(potentialExpandedUrl)
+									
 									
 									#spam filter measure - start
 									if( len(twitterUsersDict[tweet.user.screen_name]) < spamFilterCoeff ):
-
 										twitterUsersDict[tweet.user.screen_name]['potentialExpandedUrlsArray'].append(potentialExpandedUrl)
 									#spam filter measure - end
-
 								else:
 									#twitterUsersDict[tweet.user.screen_name] = [potentialExpandedUrl]
 
@@ -159,7 +171,8 @@ def getRequestUrls():
 
 									twitterUsersDict[tweet.user.screen_name]['potentialExpandedUrlsArray'] = [potentialExpandedUrl]
 									twitterUsersDict[tweet.user.screen_name]['create_datetime'] = localTweetDatetime
-									twitterUsersDict[tweet.user.screen_name]['tweet_id'] = tweet.id 
+									twitterUsersDict[tweet.user.screen_name]['tweet_id'] = tweet.id
+								'''
 			except:
 				exc_type, exc_obj, exc_tb = sys.exc_info()
 				fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -177,7 +190,7 @@ def getRequestUrls():
 		
 		#print 'DEBUG CAUTION, sinceIDValue SET'
 		#print
-		#sinceIDValue = 624360098433994752
+		#sinceIDValue = 630131997084622848
 
 		sinceIDFile.write(str(sinceIDValue) + '\n')
 		sinceIDFile.close()
@@ -194,12 +207,29 @@ def processNewURLs(twitterUsersDict):
 	if( len(twitterUsersDict) == 0 ):
 		return
 
-	for user, userDataDict in twitterUsersDict.items():
-		print 'for:', user
-		for url in userDataDict['potentialExpandedUrlsArray']:
-			getOrSetArchive(user, userDataDict['tweet_id'], url, userDataDict['create_datetime'])
+	for tweetID, userDataDict in twitterUsersDict.items():
+		print 'for:', userDataDict['screen_name']
+		getOrSetArchive(userDataDict['screen_name'], tweetID, userDataDict['expandedUrl'], userDataDict['create_datetime'])
 		print
 
+	
+	print '\t', 'clearing cache'
+	try:
+		#clear cache - start
+
+		#headers = {'cache-control': 'no-cache'}
+		#r = requests.head('http://labs.mementoweb.org/timemap/link/' + userDataDict['expandedUrl'], headers=headers)
+
+		for tweetID, userDataDict in twitterUsersDict.items():
+			co = 'curl -I -H "cache-control: no-cache" "' + 'http://labs.mementoweb.org/timemap/link/' + userDataDict['expandedUrl'] + '"'
+			output = commands.getoutput(co)
+			#print output
+		#clear cache - end
+	except:
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(fname, exc_tb.tb_lineno, sys.exc_info() )
+	
 def genericBadMessage(url, screenName, tweet_id):
 
 	url = url.strip()
@@ -228,5 +258,6 @@ def entryPoint():
 
 	twitterUsersDict = getRequestUrls()
 	processNewURLs(twitterUsersDict)
+
 
 entryPoint()

@@ -4,6 +4,8 @@
 	"temporalThresholdInDays": 1,
 	"MEMENTO_AGGREGATOR_TIMEGATE": "http://timetravel.mementoweb.org/timegate/",
 
+	"SET_OR_GETSET_ARCHIVE_FLAG": "set",
+
 	"IA_SAVEWEBPAGE_URI": "http://web.archive.org/save/",
 	"AIS_SAVEWEBPAGE_URI": "https://archive.is/submit/",
 
