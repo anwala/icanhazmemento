@@ -30,8 +30,34 @@ MEMENTO_AGGREGATOR_TIMEGATE = getConfigParameters('MEMENTO_AGGREGATOR_TIMEGATE')
 IA_SAVEWEBPAGE_URI = getConfigParameters('IA_SAVEWEBPAGE_URI')
 AIS_SAVEWEBPAGE_URI = getConfigParameters('AIS_SAVEWEBPAGE_URI')
 
-
 def expandUrl(url):
+
+	url = url.strip()
+	if( len(url) == 0 ):
+		return ''
+
+	try:
+		# when using find, use outputLowercase
+		# when indexing, use output
+
+		co = 'curl -s -I -L "' + url + '"'
+		output = commands.getoutput(co)
+		outputLowercase = output.lower()
+
+		indexOfLocation = outputLowercase.rfind('location:')
+
+		if( indexOfLocation != -1 ):
+			indexOfNewLineAfterLocation = outputLowercase.find('\n', indexOfLocation)
+			redirectUrl = output[indexOfLocation:indexOfNewLineAfterLocation]
+			redirectUrl = redirectUrl.split(' ')[1]
+
+			return redirectUrl
+		else:
+			return url
+	except:
+		return url
+
+def expandUrl_old(url):
 
 	url = url.strip()
 	if(len(url) == 0):
