@@ -42,12 +42,13 @@ def expandUrl(url):
 
 		co = 'curl -s -I -L "' + url + '"'
 		output = commands.getoutput(co)
+		
 		outputLowercase = output.lower()
-
-		indexOfLocation = outputLowercase.rfind('location:')
+		indexOfLocation = outputLowercase.rfind('\nlocation:')
 
 		if( indexOfLocation != -1 ):
-			indexOfNewLineAfterLocation = outputLowercase.find('\n', indexOfLocation)
+			# indexOfLocation + 1: skip initial newline preceding location:
+			indexOfNewLineAfterLocation = outputLowercase.find('\n', indexOfLocation + 1)
 			redirectUrl = output[indexOfLocation:indexOfNewLineAfterLocation]
 			redirectUrl = redirectUrl.split(' ')[1]
 
